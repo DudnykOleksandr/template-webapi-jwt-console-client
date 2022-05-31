@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 using WebApi.Code;
 
 namespace WebApi.Controllers
@@ -9,17 +10,21 @@ namespace WebApi.Controllers
     public class LoginController : ControllerBase
     {
         private readonly ILogger<LoginController> _logger;
+        private readonly UsersService _usersService;
 
-        public LoginController(ILogger<LoginController> logger)
+        public LoginController(ILogger<LoginController> logger, UsersService usersService)
         {
             _logger = logger;
+            _usersService = usersService;
         }
 
         [AllowAnonymous]
         [HttpPost("[action]")]
-        public string Login(LoginDto loginDto)
+        public async Task<string> Login(LoginDto loginDto)
         {
+            var token = await _usersService.LoginAsync(loginDto.UserName, loginDto.Password);
 
+            return token;
         }
     }
 }

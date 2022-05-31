@@ -1,4 +1,5 @@
 using System.Net;
+using ConsoleClient.Code;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -10,29 +11,22 @@ namespace ConsoleClient;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddBlockchainShared(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddWalletServiceClient(configuration);
-
-        return services;
-    }
-
-    public static IServiceCollection AddWalletServiceClient(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.Configure<WalletServiceOptions>(configuration.GetSection(WalletServiceOptions.SectionName));
+        services.Configure<ServerOptions>(configuration.GetSection(ServerOptions.SectionName));
 
         services.AddHttpClient<HttpClient>("HttpClient").AddPolicyHandler(GetTransientHttpErrorRetryPolicy());
-        services.AddTransient<WalletServiceApiAuthHeaderHandler>();
-        services.AddRefitClient<IWalletServiceApiClient>()
+        services.AddTransient<AuthHeaderHandler>();
+        services.AddRefitClient<IServerApiClient>()
             .ConfigureHttpClient((sp, c) =>
             {
-                var options = sp.GetService<IOptions<WalletServiceOptions>>();
+                var options = sp.GetService<IOptions<ServerOptions>>();
 
                 c.BaseAddress = new Uri(options.Value.Url);
                 c.Timeout = TimeSpan.FromMinutes(5);
             })
             .AddPolicyHandler((sp, request) => GetTransientHttpErrorRetryPolicyWithForbidden(sp))
-            .AddHttpMessageHandler<WalletServiceApiAuthHeaderHandler>();
+            .AddHttpMessageHandler<AuthHeaderHandler>();
 
         return services;
     }
@@ -56,7 +50,7 @@ public static class ServiceCollectionExtensions
             {
                 if (message.Result.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    var authHeaderHandler = sp.GetService<WalletServiceApiAuthHeaderHandler>();
+                    var authHeaderHandler = sp.GetService<AuthHeaderHandler>();
                     authHeaderHandler.ResetToken();
                 }
             });
